@@ -19,8 +19,15 @@ export default function Home() {
   useEffect(() => {
     async function getData() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth`);
-        setVisible(res.status === 200);
+        const deviceId = localStorage.getItem("deviceId");
+        
+        if (deviceId) {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth?q=${deviceId}`
+          );
+
+          setVisible(res.status === 200);
+        }
       } catch (err) {
         console.error("Auth check failed", err);
       } finally {

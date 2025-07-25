@@ -1,31 +1,37 @@
 // components/PasswordCard.tsx
 
-import { useState } from 'react';
+import { useState } from "react";
 
-export default function PasswordCard({ setVisible }: { setVisible: (v: boolean) => void }) {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+export default function PasswordCard({
+  setVisible,
+}: {
+  setVisible: (v: boolean) => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
+      const deviceId = Math.random();
+      const res = await fetch("/api/auth", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, deviceId }),
       });
 
       if (res.status === 200) {
         setVisible(true);
+        localStorage.setItem("deviceId", JSON.stringify(deviceId));
       } else {
-        setError('Invalid password');
+        setError("Invalid password");
       }
     } catch (err) {
-      setError('Server error');
+      setError("Server error");
     }
   };
 

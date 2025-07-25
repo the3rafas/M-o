@@ -12,15 +12,17 @@ if (!password) {
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method == "GET") {
-    if (!fs.existsSync(authPAth)) {
-      return res.send(403);
+    if (!fs.existsSync(authPAth) || req.query.q == "null") {
+      return res.send(401);
     }
+
     const data = JSON.parse(fs.readFileSync(authPAth, "utf8")) as {
       lastLogInDate: Date;
+      deviceId: number;
     }[];
 
-    if (!data) {
-      return res.send(403);
+    if (!data || data[0].deviceId !== Number(req.query.q)) {
+      return res.status(403).send({});
     }
     const lastLogInDate = new Date(data[0].lastLogInDate);
     const now = new Date();
@@ -34,7 +36,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     if (diffInDays <= 3) {
       return res.send(200);
     } else {
-      return res.send(403);
+      return res.status(403).send({});
     }
   } else if (req.method === "POST") {
     const body = req.body;
@@ -46,6 +48,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         JSON.stringify([
           {
             lastLogInDate: new Date(),
+            deviceId: body.deviceId,
           },
         ]),
         "utf8"
@@ -53,7 +56,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
       return res.send(200);
     } else {
-      return res.send(403);
+      return res.status(403).send({});
     }
   } else {
     return res.status(500).json({ error: "55555555555555555555555555555 " });
