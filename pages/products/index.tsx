@@ -3,7 +3,7 @@ import { Product } from "@/type";
 import { GetStaticProps } from "next";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 
 export default function ProductsPage({
   productsData,

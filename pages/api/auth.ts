@@ -46,7 +46,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         ]),
         "utf8"
       );
-      console.log("sdsds");
 
       return res.send(200);
     } else {

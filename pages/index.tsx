@@ -1,9 +1,7 @@
 import PasswordCard from "@/component/passwordCard";
-import { getAuth } from "@/lib/auth";
-import { GetStaticProps } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +13,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export default function Home({ authorized }: { authorized: boolean }) {
-  const [visible, setVisible] = useState(authorized);
+export default function Home() {
+  const [visible, setVisible] = useState<boolean>(false);
+  const [isChecking, setIsChecking] = useState<boolean>(true);
+  useEffect(() => {
+    async function getData() {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/auth`);
+        setVisible(res.status === 200);
+      } catch (err) {
+        console.error("Auth check failed", err);
+      } finally {
+        setIsChecking(false);
+      }
+    }
+    getData();
+  }, []);
+  if (isChecking) {
+    return (
+      <div className="text-center mt-20 text-gray-600">Checking access...</div>
+    );
+  }
+
   if (!visible) {
     return (
       <>
@@ -59,22 +77,3 @@ export default function Home({ authorized }: { authorized: boolean }) {
     </div>
   );
 }
-
-export const getStaticProps = (async () => {
-  const data = getAuth();
-  if (!data) {
-    return { props: { authorized: false } };
-  }
-  const lastLogInDate = new Date(data[0].lastLogInDate);
-  const now = new Date();
-
-  // Calculate difference in milliseconds
-  const diffInMs = now.getTime() - lastLogInDate.getTime();
-
-  // Convert to days
-  const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
-
-  return { props: { authorized: diffInDays <= 3 } };
-}) satisfies GetStaticProps<{
-  authorized: boolean;
-}>;
