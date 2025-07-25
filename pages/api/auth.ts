@@ -12,6 +12,9 @@ if (!password) {
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method == "GET") {
+    if (!fs.existsSync(authPAth)) {
+      return res.send(403);
+    }
     const data = JSON.parse(fs.readFileSync(authPAth, "utf8")) as {
       lastLogInDate: Date;
     }[];
