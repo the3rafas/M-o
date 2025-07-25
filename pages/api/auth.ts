@@ -38,6 +38,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } else if (req.method === "POST") {
     const body = req.body;
+    console.log("Hitted", req.body, password);
 
     if (body.password === password) {
       fs.writeFileSync(
