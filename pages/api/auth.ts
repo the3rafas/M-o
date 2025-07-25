@@ -1,64 +1,61 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-import type { NextApiRequest, NextApiResponse } from "next";
-import fs from "fs";
-import path from "path";
+// pages/api/auth.ts
 
-const authPAth = path.join(process.cwd(), "data", "auth.json");
+import type { NextApiRequest, NextApiResponse } from "next";
+import { prisma } from "@/lib/prisma";
+
 const password = process.env.password;
 
 if (!password) {
-  process.exit("need password to continue");
+  throw new Error("Missing required environment variable: password");
 }
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method == "GET") {
-    if (!fs.existsSync(authPAth) || req.query.q == "null") {
-      return res.send(401);
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "GET") {
+    const deviceId = Number(req.query.q);
+
+    if (!deviceId || isNaN(deviceId)) {
+      return res.status(401).json({ error: "Missing or invalid device ID" });
     }
 
-    const data = JSON.parse(fs.readFileSync(authPAth, "utf8")) as {
-      lastLogInDate: Date;
-      deviceId: number;
-    }[];
+    // Get the most recent login for that device
+    const latest = await prisma.authLog.findFirst({
+      where: { deviceId: req.query.q as string },
+      orderBy: { loginDate: "desc" },
+    });
 
-    if (!data || data[0].deviceId !== Number(req.query.q)) {
-      return res.status(403).send({});
+    if (!latest) {
+      return res.status(403).json({ error: "No login record found" });
     }
-    const lastLogInDate = new Date(data[0].lastLogInDate);
+
+    const lastLogInDate = new Date(latest.loginDate);
     const now = new Date();
-
-    // Calculate difference in milliseconds
-    const diffInMs = now.getTime() - lastLogInDate.getTime();
-
-    // Convert to days
-    const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+    const diffInDays =
+      (now.getTime() - lastLogInDate.getTime()) / (1000 * 60 * 60 * 24);
 
     if (diffInDays <= 3) {
-      return res.send(200);
+      return res.status(200).json({ authorized: true });
     } else {
-      return res.status(403).send({});
+      return res.status(403).json({ error: "Login expired" });
     }
   } else if (req.method === "POST") {
-    const body = req.body;
-    console.log("Hitted", req.body, password);
+    const { password: pwd, deviceId } = req.body;
 
-    if (body.password === password) {
-      fs.writeFileSync(
-        authPAth,
-        JSON.stringify([
-          {
-            lastLogInDate: new Date(),
-            deviceId: body.deviceId,
-          },
-        ]),
-        "utf8"
-      );
+    if (pwd === password) {
+      await prisma.authLog.create({
+        data: {
+          loginDate: new Date(),
+          deviceId:String(deviceId),
+        },
+      });
 
-      return res.send(200);
+      return res.status(200).json({ message: "Authorized" });
     } else {
-      return res.status(403).send({});
+      return res.status(403).json({ error: "Unauthorized" });
     }
-  } else {
-    return res.status(500).json({ error: "55555555555555555555555555555 " });
   }
+
+  return res.status(405).json({ error: "Method Not Allowed" });
 }

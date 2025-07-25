@@ -11,7 +11,7 @@ export type Registry = {
   number: string;
   date: string;
   status: string;
-  billItems: BillItems[];
+  items: BillItems[];
   totalPrice: number;
 };
 export type Product = {

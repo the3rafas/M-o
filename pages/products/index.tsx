@@ -1,16 +1,10 @@
-import { getAllProducts } from "@/lib/products";
 import { Product } from "@/type";
-import { GetStaticProps } from "next";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
-export default function ProductsPage({
-  productsData,
-}: {
-  productsData: Product[];
-}) {
-  const [products, setProducts] = useState<Product[]>(productsData);
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState<{ name: string; price: string }>({
     name: "",
     price: "",
@@ -18,6 +12,28 @@ export default function ProductsPage({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
+
+  // Fetch existing products
+  useEffect(() => {
+    async function fetchProducts() {
+      setIsLoading(true);
+      setErrorMsg("");
+      try {
+        const res = await fetch("/api/products");
+        if (!res.ok) {
+          throw new Error(`Failed to load: ${res.status}`);
+        }
+        const data = await res.json();
+        setProducts(data);
+      } catch (err) {
+        console.error(err);
+        setErrorMsg("Could not fetch products.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
 
   // Handle form submission
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -288,10 +304,10 @@ export default function ProductsPage({
   );
 }
 
-export const getStaticProps = (async () => {
-  const productsData = getAllProducts();
+// export const getStaticProps = (async () => {
+//   const productsData = getAllProducts();
 
-  return { props: { productsData } };
-}) satisfies GetStaticProps<{
-  productsData: Product[];
-}>;
+//   return { props: { productsData } };
+// }) satisfies GetStaticProps<{
+//   productsData: Product[];
+// }>;

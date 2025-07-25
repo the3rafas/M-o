@@ -1,53 +1,28 @@
-import fs from "fs";
-import path from "path";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Product } from "@/type";
+import { prisma } from "@/lib/prisma";
 
-const dataDir = path.join(process.cwd(), "data");
-const productsFile = path.join(dataDir, "products.json");
-
-function readProducts() {
-  try {
-    const json = fs.readFileSync(productsFile, "utf8");
-    return JSON.parse(json);
-  } catch (err) {
-    console.error("Error reading products.json:", err);
-    return [];
-  }
-}
-
-function writeProducts(products: Product[]) {
-  try {
-    fs.writeFileSync(productsFile, JSON.stringify(products, null, 2), "utf8");
-  } catch (err) {
-    console.error("Error writing products.json:", err);
-    throw err;
-  }
-}
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "POST") {
-    await POST(req, res);
+    return await handlePOST(req, res);
   } else if (req.method === "GET") {
-    await GET(req, res);
+    return await handleGET(req, res);
   } else if (req.method === "DELETE") {
-    await DELETE(req, res);
+    return await handleDELETE(req, res);
   } else {
-    return res.status(500).json({ error: "55555555555555555555555555555 " });
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 }
+
 /**
  * GET /api/products
  * Returns the full array of products.
  */
-async function GET(request: NextApiRequest, res: NextApiResponse) {
+async function handleGET(_req: NextApiRequest, res: NextApiResponse) {
   try {
-    const products = readProducts();
+    const products = await prisma.product.findMany();
     return res.status(200).json(products);
-  } catch {
+  } catch (err) {
+    console.error("Failed to fetch products:", err);
     return res.status(500).json({ error: "Failed to read products data." });
   }
 }
@@ -55,31 +30,28 @@ async function GET(request: NextApiRequest, res: NextApiResponse) {
 /**
  * POST /api/products
  * Expects JSON: { name: string, price: number }
- * Adds a new product, auto-incrementing `id`.
+ * Adds a new product.
  */
-async function POST(request: NextApiRequest, res: NextApiResponse) {
+async function handlePOST(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const body = await request.body;
-    const { name, price } = body;
+    const { name, price } = req.body;
 
     if (typeof name !== "string" || typeof price !== "number") {
       return res.status(400).json({
-        error:
-          'Invalid payload: "name" must be a string and "price" must be a number.',
+        error: 'Invalid payload: "name" must be a string and "price" must be a number.',
       });
     }
 
-    const products = readProducts();
-    const newId =
-      products.length > 0 ? products[products.length - 1].id + 1 : 1;
-    const newProduct = { id: newId, name: name.trim(), price };
-
-    products.push(newProduct);
-    writeProducts(products);
+    const newProduct = await prisma.product.create({
+      data: {
+        name: name.trim(),
+        price,
+      },
+    });
 
     return res.status(201).json(newProduct);
   } catch (err) {
-    console.error(err);
+    console.error("Failed to add product:", err);
     return res.status(500).json({ error: "Failed to add product." });
   }
 }
@@ -87,33 +59,30 @@ async function POST(request: NextApiRequest, res: NextApiResponse) {
 /**
  * DELETE /api/products
  * Expects JSON: { id: number }
- * Removes the product whose `id` matches. Returns the remaining array.
+ * Deletes a product by id.
  */
-export async function DELETE(request: NextApiRequest, res: NextApiResponse) {
+async function handleDELETE(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const body = await request.body;
-    const { id } = body;
+    const { id } = req.body;
 
     if (typeof id !== "number") {
-      return res
-        .status(400)
-        .json({ error: 'Invalid payload: "id" must be a number.' });
+      return res.status(400).json({ error: '"id" must be a number.' });
     }
 
-    const products = readProducts();
-    const exists = products.some((p: Product) => p.id === id);
-    if (!exists) {
-      return res.status(400).json({ error: `No product found with id=${id}.` });
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ error: `No product found with id=${id}.` });
     }
 
-    const updated = products.filter((p: Product) => p.id !== id);
-    writeProducts(updated);
+    await prisma.product.delete({ where: { id } });
 
-    return res
-      .status(200)
-      .json({ message: `Product id=${id} deleted.`, products: updated });
+    const remaining = await prisma.product.findMany();
+    return res.status(200).json({
+      message: `Product id=${id} deleted.`,
+      products: remaining,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Failed to delete product:", err);
     return res.status(500).json({ error: "Failed to delete product." });
   }
 }

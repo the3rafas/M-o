@@ -20,8 +20,10 @@ export function generateAndPrintReceipt(entry: Registry) {
         tfoot td { font-weight: bold; }
       </style>
     `;
+    console.log(entry);
+    
 
-  const rowsHtml = entry.billItems
+  const rowsHtml = entry.items
     .map(
       (item) => `
         <tr>
